@@ -24,7 +24,7 @@ def firstsetup():
         HOME = Path.home()
         INSTALL_DIR = HOME / "bento4"
         BASHRC = HOME / ".bashrc"
-        BENTO4_URL = "https://github.com/axiomatic-systems/Bento4/releases/download/v1.6.0-639/Bento4-SDK-1-6-0-639.x86_64-unknown-linux.zip"
+        BENTO4_URL = "https://www.bok.net/Bento4/binaries/Bento4-SDK-1-6-0-641.x86_64-unknown-linux.zip"
 
         INSTALL_DIR.mkdir(parents=True, exist_ok=True)
         zip_path = INSTALL_DIR / "bento4.zip"
