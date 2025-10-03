@@ -9,7 +9,7 @@ wrapper_running = False
 
 def stream_wrapper_logs(pipe, target_list):
     """Thread target to read logs from wrapper process and store them."""
-    global wrapper_running
+    global wrapper_running, wrapper_process
     try:
         for line in iter(pipe.readline, ''):
             line = line.strip()
@@ -19,8 +19,14 @@ def stream_wrapper_logs(pipe, target_list):
     except Exception as e:
         target_list.append(f"Error reading wrapper logs: {str(e)}")
     finally:
-        wrapper_running = False
-        target_list.append("Wrapper process ended")
+        # Check if process ended unexpectedly
+        if wrapper_process and wrapper_process.poll() is not None:
+            exit_code = wrapper_process.poll()
+            if exit_code != 0:
+                target_list.append(f"Wrapper process ended unexpectedly with exit code: {exit_code}")
+                wrapper_running = False
+            else:
+                target_list.append("Wrapper process ended normally")
         pipe.close()
 
 wrapper_logs = []
@@ -47,10 +53,12 @@ def login_wrapper():
     # Use absolute path and proper command format
     import os
     script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    wrapper_path = os.path.join(script_dir, "wrapper", "wrapper")
+    wrapper_dir = os.path.join(script_dir, "wrapper")
+    wrapper_path = os.path.join(wrapper_dir, "wrapper")
     
     cmd = [wrapper_path, "-L", f"{email}:{password}"]
     wrapper_logs.append(f"Executing: {' '.join(cmd)}")
+    wrapper_logs.append(f"Working directory: {wrapper_dir}")
     
     try:
         wrapper_process = subprocess.Popen(
@@ -58,7 +66,8 @@ def login_wrapper():
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             bufsize=1,
-            universal_newlines=True
+            universal_newlines=True,
+            cwd=wrapper_dir  # Run from wrapper directory
         )
         
         wrapper_running = True
@@ -85,7 +94,27 @@ def download():
 
 @app.route("/get_logs")
 def get_logs():
+    global wrapper_running, wrapper_process
+    
+    # Check if wrapper process is still running
+    if wrapper_process and wrapper_process.poll() is not None:
+        if wrapper_running:  # Process ended but we thought it was still running
+            wrapper_running = False
+    
     return jsonify({
         "wrapper": wrapper_logs[-200:],  # last 200 lines
-        "downloader": downloader_logs[-200:]
+        "downloader": downloader_logs[-200:],
+        "wrapper_running": wrapper_running
     })
+
+@app.route("/stop_wrapper", methods=["POST"])
+def stop_wrapper():
+    global wrapper_process, wrapper_running, wrapper_logs
+    
+    if wrapper_process and wrapper_process.poll() is None:
+        wrapper_process.terminate()
+        wrapper_logs.append("Wrapper process terminated by user")
+        wrapper_running = False
+        return jsonify({"status": "ok", "msg": "Wrapper stopped"})
+    else:
+        return jsonify({"status": "error", "msg": "Wrapper not running"})

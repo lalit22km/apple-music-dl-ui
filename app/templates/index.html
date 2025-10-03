@@ -26,6 +26,7 @@
     <!-- Login Section -->
     <div class="text-center mb-3">
         <button id="login-btn" class="btn btn-secondary">Login to Wrapper</button>
+        <button id="stop-wrapper-btn" class="btn btn-danger ms-2 d-none">Stop Wrapper</button>
         <div id="login-form" class="mt-3 d-none">
             <input type="email" id="email" placeholder="Email" class="form-control mb-2 w-25 mx-auto">
             <input type="password" id="password" placeholder="Password" class="form-control mb-2 w-25 mx-auto">
@@ -73,14 +74,25 @@ document.getElementById("login-btn").addEventListener("click", () => {
 document.getElementById("submit-login").addEventListener("click", () => {
     const email = document.getElementById("email").value;
     const password = document.getElementById("password").value;
+    
+    // Add immediate feedback
+    const wrapperLogs = document.getElementById("wrapper-logs");
+    wrapperLogs.innerHTML += `<div>> Attempting to login with ${email}...</div>`;
+    wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
 
     axios.post("/login_wrapper", new URLSearchParams({email, password}))
         .then(res => {
             if (res.data.status === "ok") {
-                document.getElementById("wrapper-indicator").className = "badge bg-success";
-                document.getElementById("wrapper-indicator").innerText = "Wrapper: Running";
-                document.getElementById("download-btn").disabled = false;
+                updateWrapperStatus(true);
+                wrapperLogs.innerHTML += `<div>> ${res.data.msg}</div>`;
+            } else {
+                wrapperLogs.innerHTML += `<div>> ERROR: ${res.data.msg}</div>`;
             }
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+        })
+        .catch(err => {
+            wrapperLogs.innerHTML += `<div>> ERROR: Failed to connect to server</div>`;
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
         });
 });
 
@@ -95,6 +107,37 @@ document.getElementById("download-btn").addEventListener("click", () => {
             logs.scrollTop = logs.scrollHeight;
         });
 });
+
+document.getElementById("stop-wrapper-btn").addEventListener("click", () => {
+    axios.post("/stop_wrapper")
+        .then(res => {
+            const wrapperLogs = document.getElementById("wrapper-logs");
+            wrapperLogs.innerHTML += `<div>> ${res.data.msg}</div>`;
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+            
+            if (res.data.status === "ok") {
+                updateWrapperStatus(false);
+            }
+        });
+});
+
+function updateWrapperStatus(running) {
+    const indicator = document.getElementById("wrapper-indicator");
+    const downloadBtn = document.getElementById("download-btn");
+    const stopBtn = document.getElementById("stop-wrapper-btn");
+    
+    if (running) {
+        indicator.className = "badge bg-success";
+        indicator.innerText = "Wrapper: Running";
+        downloadBtn.disabled = false;
+        stopBtn.classList.remove("d-none");
+    } else {
+        indicator.className = "badge bg-danger";
+        indicator.innerText = "Wrapper: Stopped";
+        downloadBtn.disabled = true;
+        stopBtn.classList.add("d-none");
+    }
+}
 
 function updateLogs() {
     axios.get("/get_logs").then(res => {
@@ -111,6 +154,10 @@ function updateLogs() {
             downloaderBox.innerHTML = res.data.downloader.map(l => `<div>> ${l}</div>`).join("");
             downloaderBox.scrollTop = downloaderBox.scrollHeight;
         }
+        
+        // Update wrapper status based on server response
+        updateWrapperStatus(res.data.wrapper_running);
+        
     }).catch(err => {
         console.log("Error fetching logs:", err);
     });
