@@ -27,6 +27,13 @@
     <div class="text-center mb-3">
         <button id="login-btn" class="btn btn-secondary">Login to Wrapper</button>
         <button id="stop-wrapper-btn" class="btn btn-danger ms-2 d-none">Stop Wrapper</button>
+        <button id="auto-login-btn" class="btn btn-info ms-2 d-none">🤖 Auto Login</button>
+        <button id="forget-credentials-btn" class="btn btn-warning ms-2 d-none">🗑️ Forget Credentials</button>
+        
+        <div id="saved-credentials-info" class="mt-2 d-none">
+            <small class="text-success">💾 Saved credentials for: <span id="saved-email-display"></span></small>
+        </div>
+        
         <div id="login-form" class="mt-3 d-none">
             <input type="email" id="email" placeholder="Email" class="form-control mb-2 w-25 mx-auto">
             <input type="password" id="password" placeholder="Password" class="form-control mb-2 w-25 mx-auto">
@@ -39,13 +46,20 @@
         <input id="link-box" type="text" class="form-control form-control-lg mb-3 w-50 mx-auto"
                placeholder="Paste Apple Music link here">
 
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="format" id="atmos" value="ATMOS" checked>
-            <label class="form-check-label" for="atmos">ATMOS</label>
+        <div class="form-check mb-3">
+            <input class="form-check-input" type="checkbox" id="special-audio" checked>
+            <label class="form-check-label" for="special-audio">Special Audio</label>
         </div>
-        <div class="form-check form-check-inline">
-            <input class="form-check-input" type="radio" name="format" id="aac" value="AAC">
-            <label class="form-check-label" for="aac">AAC</label>
+        
+        <div id="format-options" class="border rounded p-3 mb-3" style="background-color: #333; border-color: #555;">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="format" id="atmos" value="ATMOS" checked>
+                <label class="form-check-label" for="atmos">ATMOS</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="format" id="aac" value="AAC">
+                <label class="form-check-label" for="aac">AAC</label>
+            </div>
         </div>
 
         <div class="mt-3">
@@ -67,6 +81,54 @@
 </div>
 
 <script>
+// Check for saved credentials on page load
+function checkSavedCredentials() {
+    axios.get('/check_saved_credentials')
+        .then(res => {
+            if (res.data.has_credentials) {
+                document.getElementById('saved-credentials-info').classList.remove('d-none');
+                document.getElementById('saved-email-display').textContent = res.data.email;
+                document.getElementById('auto-login-btn').classList.remove('d-none');
+                document.getElementById('forget-credentials-btn').classList.remove('d-none');
+            }
+        });
+}
+
+// Auto-login functionality
+document.getElementById('auto-login-btn').addEventListener('click', () => {
+    const wrapperLogs = document.getElementById('wrapper-logs');
+    wrapperLogs.innerHTML += `<div>> 🤖 Starting auto-login...</div>`;
+    wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+    
+    axios.post('/auto_login')
+        .then(res => {
+            if (res.data.status === 'ok') {
+                wrapperLogs.innerHTML += `<div>> ${res.data.msg}</div>`;
+            } else {
+                wrapperLogs.innerHTML += `<div>> ❌ ${res.data.msg}</div>`;
+            }
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+        });
+});
+
+// Forget credentials functionality
+document.getElementById('forget-credentials-btn').addEventListener('click', () => {
+    if (confirm('Are you sure you want to delete saved credentials?')) {
+        axios.post('/delete_saved_credentials')
+            .then(res => {
+                if (res.data.status === 'ok') {
+                    document.getElementById('saved-credentials-info').classList.add('d-none');
+                    document.getElementById('auto-login-btn').classList.add('d-none');
+                    document.getElementById('forget-credentials-btn').classList.add('d-none');
+                    
+                    const wrapperLogs = document.getElementById('wrapper-logs');
+                    wrapperLogs.innerHTML += `<div>> 🗑️ Saved credentials deleted</div>`;
+                    wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+                }
+            });
+    }
+});
+
 document.getElementById("login-btn").addEventListener("click", () => {
     document.getElementById("login-form").classList.toggle("d-none");
 });
@@ -98,12 +160,38 @@ document.getElementById("submit-login").addEventListener("click", () => {
 
 document.getElementById("download-btn").addEventListener("click", () => {
     const link = document.getElementById("link-box").value;
-    const format = document.querySelector("input[name='format']:checked").value;
+    const format = document.querySelector("input[name='format']:checked")?.value || "ATMOS";
+    const specialAudio = document.getElementById("special-audio").checked;
+    
+    if (!link.trim()) {
+        const logs = document.getElementById("downloader-logs");
+        logs.innerHTML += `<div style="color: #dc3545;"> ❌ Please enter a valid Apple Music URL</div>`;
+        logs.scrollTop = logs.scrollHeight;
+        return;
+    }
 
-    axios.post("/download", new URLSearchParams({ link, format }))
+    const formData = new URLSearchParams({
+        link: link,
+        format: format,
+        special_audio: specialAudio
+    });
+
+    axios.post("/download", formData)
         .then(res => {
             const logs = document.getElementById("downloader-logs");
-            logs.innerHTML += `<div>> ${res.data.msg}</div>`;
+            if (res.data.status === "ok") {
+                logs.innerHTML += `<div style="color: #28a745;"> ✅ ${res.data.msg}</div>`;
+                // Disable download button while download is running
+                document.getElementById("download-btn").disabled = true;
+                document.getElementById("download-btn").textContent = "Downloading...";
+            } else {
+                logs.innerHTML += `<div style="color: #dc3545;"> ❌ ${res.data.msg}</div>`;
+            }
+            logs.scrollTop = logs.scrollHeight;
+        })
+        .catch(err => {
+            const logs = document.getElementById("downloader-logs");
+            logs.innerHTML += `<div style="color: #dc3545;"> ❌ Failed to start download</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 });
@@ -143,6 +231,7 @@ function updateLogs() {
     axios.get("/get_logs").then(res => {
         const wrapperBox = document.getElementById("wrapper-logs");
         const downloaderBox = document.getElementById("downloader-logs");
+        const downloadBtn = document.getElementById("download-btn");
 
         // Only update if there are actually logs to show
         if (res.data.wrapper.length > 0) {
@@ -162,8 +251,30 @@ function updateLogs() {
         }
         
         if (res.data.downloader.length > 0) {
-            downloaderBox.innerHTML = res.data.downloader.map(l => `<div>> ${l}</div>`).join("");
+            // Color-code download messages
+            downloaderBox.innerHTML = res.data.downloader.map(l => {
+                if (l.includes("✅") || l.includes("completed successfully")) {
+                    return `<div style="color: #28a745;">> ${l}</div>`;
+                } else if (l.includes("❌") || l.includes("failed") || l.includes("Error")) {
+                    return `<div style="color: #dc3545;">> ${l}</div>`;
+                } else if (l.includes("🎵") || l.includes("Starting")) {
+                    return `<div style="color: #17a2b8;">> ${l}</div>`;
+                } else {
+                    return `<div>> ${l}</div>`;
+                }
+            }).join("");
             downloaderBox.scrollTop = downloaderBox.scrollHeight;
+        }
+        
+        // Update download button state based on download status
+        if (res.data.download_running) {
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = "Downloading...";
+        } else {
+            if (res.data.wrapper_running) {
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = "Download";
+            }
         }
         
         // Update wrapper status based on server response
@@ -177,6 +288,23 @@ function updateLogs() {
 // Start polling immediately and then every 1 second for better responsiveness
 updateLogs();
 setInterval(updateLogs, 1000);
+
+// Check for saved credentials when page loads
+checkSavedCredentials();
+
+// Handle Special Audio checkbox toggle
+document.getElementById('special-audio').addEventListener('change', function() {
+    const formatOptions = document.getElementById('format-options');
+    const radioButtons = formatOptions.querySelectorAll('input[type="radio"]');
+    
+    if (this.checked) {
+        formatOptions.style.opacity = '1';
+        radioButtons.forEach(radio => radio.disabled = false);
+    } else {
+        formatOptions.style.opacity = '0.5';
+        radioButtons.forEach(radio => radio.disabled = true);
+    }
+});
 </script>
 </body>
 </html>
