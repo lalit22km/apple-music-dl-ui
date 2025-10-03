@@ -101,14 +101,24 @@ function updateLogs() {
         const wrapperBox = document.getElementById("wrapper-logs");
         const downloaderBox = document.getElementById("downloader-logs");
 
-        wrapperBox.innerHTML = res.data.wrapper.map(l => `> ${l}`).join("<br>");
-        downloaderBox.innerHTML = res.data.downloader.map(l => `> ${l}`).join("<br>");
-
-        wrapperBox.scrollTop = wrapperBox.scrollHeight;
-        downloaderBox.scrollTop = downloaderBox.scrollHeight;
+        // Only update if there are actually logs to show
+        if (res.data.wrapper.length > 0) {
+            wrapperBox.innerHTML = res.data.wrapper.map(l => `<div>> ${l}</div>`).join("");
+            wrapperBox.scrollTop = wrapperBox.scrollHeight;
+        }
+        
+        if (res.data.downloader.length > 0) {
+            downloaderBox.innerHTML = res.data.downloader.map(l => `<div>> ${l}</div>`).join("");
+            downloaderBox.scrollTop = downloaderBox.scrollHeight;
+        }
+    }).catch(err => {
+        console.log("Error fetching logs:", err);
     });
 }
-setInterval(updateLogs, 1500);
+
+// Start polling immediately and then every 1 second for better responsiveness
+updateLogs();
+setInterval(updateLogs, 1000);
 </script>
 </body>
 </html>
