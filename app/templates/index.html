@@ -13,7 +13,7 @@
     <!-- Top bar -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <button class="btn btn-outline-light">⚙ Settings</button>
+            <button class="btn btn-outline-light" onclick="window.location.href='/settings'">⚙ Settings</button>
         </div>
         <div>
             <span id="wrapper-indicator"
@@ -83,7 +83,7 @@ document.getElementById("submit-login").addEventListener("click", () => {
     axios.post("/login_wrapper", new URLSearchParams({email, password}))
         .then(res => {
             if (res.data.status === "ok") {
-                updateWrapperStatus(true);
+                // Don't immediately set as running - wait for the success message in logs
                 wrapperLogs.innerHTML += `<div>> ${res.data.msg}</div>`;
             } else {
                 wrapperLogs.innerHTML += `<div>> ERROR: ${res.data.msg}</div>`;
@@ -146,7 +146,18 @@ function updateLogs() {
 
         // Only update if there are actually logs to show
         if (res.data.wrapper.length > 0) {
-            wrapperBox.innerHTML = res.data.wrapper.map(l => `<div>> ${l}</div>`).join("");
+            // Color-code success and error messages
+            wrapperBox.innerHTML = res.data.wrapper.map(l => {
+                if (l.includes("✅") || l.includes("Ready for downloads")) {
+                    return `<div style="color: #28a745;">> ${l}</div>`;
+                } else if (l.includes("❌") || l.includes("Login failed") || l.includes("ERROR")) {
+                    return `<div style="color: #dc3545;">> ${l}</div>`;
+                } else if (l.includes("[.] response type 6")) {
+                    return `<div style="color: #28a745; font-weight: bold;">> ${l}</div>`;
+                } else {
+                    return `<div>> ${l}</div>`;
+                }
+            }).join("");
             wrapperBox.scrollTop = wrapperBox.scrollHeight;
         }
         

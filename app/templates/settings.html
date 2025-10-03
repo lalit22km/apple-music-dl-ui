@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Apple Music Downloader - Settings</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .settings-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .settings-section {
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .settings-section h4 {
+            color: #fff;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .form-label {
+            color: #ccc;
+            font-weight: 500;
+        }
+        .form-control, .form-select {
+            background: #333;
+            border: 1px solid #555;
+            color: #fff;
+        }
+        .form-control:focus, .form-select:focus {
+            background: #333;
+            border-color: #007bff;
+            color: #fff;
+            box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        }
+        .form-check-input:checked {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        .btn-save {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        .alert {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1001;
+            min-width: 300px;
+        }
+    </style>
+</head>
+<body class="bg-dark text-light">
+
+<div class="settings-container">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>⚙️ Settings</h2>
+        <button class="btn btn-outline-light" onclick="window.location.href='/'">← Back to Main</button>
+    </div>
+
+    <!-- Loading indicator -->
+    <div id="loading" class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2">Loading configuration...</p>
+    </div>
+
+    <!-- Settings Form -->
+    <form id="settings-form" style="display: none;">
+        
+        <!-- Authentication Settings -->
+        <div class="settings-section">
+            <h4>🔐 Authentication</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="media-user-token" class="form-label">Media User Token</label>
+                    <input type="text" class="form-control" id="media-user-token" placeholder="your-media-user-token">
+                    <small class="text-muted">Required for lyrics and AAC-LC downloads</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="authorization-token" class="form-label">Authorization Token</label>
+                    <input type="text" class="form-control" id="authorization-token" placeholder="your-authorization-token">
+                    <small class="text-muted">Auto-obtained, usually no need to change</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Regional Settings -->
+        <div class="settings-section">
+            <h4>🌍 Regional Settings</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="language" class="form-label">Language</label>
+                    <input type="text" class="form-control" id="language" placeholder="e.g., en-US">
+                </div>
+                <div class="col-md-6">
+                    <label for="storefront" class="form-label">Storefront</label>
+                    <input type="text" class="form-control" id="storefront" placeholder="e.g., us, jp, ca">
+                    <small class="text-muted">2-letter country code for your account region</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Folders -->
+        <div class="settings-section">
+            <h4>📁 Download Folders</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="alac-save-folder" class="form-label">ALAC Folder</label>
+                    <input type="text" class="form-control" id="alac-save-folder" placeholder="AM-DL downloads">
+                </div>
+                <div class="col-md-4">
+                    <label for="atmos-save-folder" class="form-label">Atmos Folder</label>
+                    <input type="text" class="form-control" id="atmos-save-folder" placeholder="AM-DL-Atmos downloads">
+                </div>
+                <div class="col-md-4">
+                    <label for="aac-save-folder" class="form-label">AAC Folder</label>
+                    <input type="text" class="form-control" id="aac-save-folder" placeholder="AM-DL-AAC downloads">
+                </div>
+            </div>
+        </div>
+
+        <!-- Quality Settings -->
+        <div class="settings-section">
+            <h4>🎵 Quality Settings</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="aac-type" class="form-label">AAC Type</label>
+                    <select class="form-select" id="aac-type">
+                        <option value="aac-lc">AAC-LC</option>
+                        <option value="aac">AAC</option>
+                        <option value="aac-binaural">AAC Binaural</option>
+                        <option value="aac-downmix">AAC Downmix</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="alac-max" class="form-label">ALAC Max Quality</label>
+                    <select class="form-select" id="alac-max">
+                        <option value="192000">192 kHz</option>
+                        <option value="96000">96 kHz</option>
+                        <option value="48000">48 kHz</option>
+                        <option value="44100">44.1 kHz</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="atmos-max" class="form-label">Atmos Max Quality</label>
+                    <select class="form-select" id="atmos-max">
+                        <option value="2768">2768 kbps</option>
+                        <option value="2448">2448 kbps</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="limit-max" class="form-label">Download Limit</label>
+                    <input type="number" class="form-control" id="limit-max" min="1" max="1000" placeholder="200">
+                </div>
+            </div>
+        </div>
+
+        <!-- Cover Art Settings -->
+        <div class="settings-section">
+            <h4>🖼️ Cover Art Settings</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="cover-size" class="form-label">Cover Size</label>
+                    <input type="text" class="form-control" id="cover-size" placeholder="5000x5000">
+                </div>
+                <div class="col-md-4">
+                    <label for="cover-format" class="form-label">Cover Format</label>
+                    <select class="form-select" id="cover-format">
+                        <option value="jpg">JPG</option>
+                        <option value="png">PNG</option>
+                        <option value="original">Original</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <div class="mt-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="embed-cover">
+                            <label class="form-check-label" for="embed-cover">Embed Cover Art</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="save-artist-cover">
+                            <label class="form-check-label" for="save-artist-cover">Save Artist Cover</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="save-animated-artwork">
+                            <label class="form-check-label" for="save-animated-artwork">Save Animated Artwork</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="emby-animated-artwork">
+                            <label class="form-check-label" for="emby-animated-artwork">Emby Animated Artwork</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lyrics Settings -->
+        <div class="settings-section">
+            <h4>📝 Lyrics Settings</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="lrc-type" class="form-label">Lyrics Type</label>
+                    <select class="form-select" id="lrc-type">
+                        <option value="lyrics">Lyrics</option>
+                        <option value="syllable-lyrics">Syllable Lyrics</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="lrc-format" class="form-label">Lyrics Format</label>
+                    <select class="form-select" id="lrc-format">
+                        <option value="lrc">LRC</option>
+                        <option value="ttml">TTML</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="mt-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="embed-lrc">
+                            <label class="form-check-label" for="embed-lrc">Embed Lyrics</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="mt-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="save-lrc-file">
+                            <label class="form-check-label" for="save-lrc-file">Save Lyrics File</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Naming -->
+        <div class="settings-section">
+            <h4>📂 File Naming Formats</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="album-folder-format" class="form-label">Album Folder Format</label>
+                    <input type="text" class="form-control" id="album-folder-format" placeholder="{AlbumName}">
+                    <small class="text-muted">Variables: {AlbumId}, {AlbumName}, {ArtistName}, {ReleaseDate}, {ReleaseYear}, {UPC}, {Copyright}, {Quality}, {Codec}, {Tag}, {RecordLabel}</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="playlist-folder-format" class="form-label">Playlist Folder Format</label>
+                    <input type="text" class="form-control" id="playlist-folder-format" placeholder="{PlaylistName}">
+                    <small class="text-muted">Variables: {PlaylistId}, {PlaylistName}, {ArtistName}, {Quality}, {Codec}, {Tag}</small>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="song-file-format" class="form-label">Song File Format</label>
+                    <input type="text" class="form-control" id="song-file-format" placeholder="{SongNumer}. {SongName}">
+                    <small class="text-muted">Variables: {SongId}, {SongNumer}, {SongName}, {DiscNumber}, {TrackNumber}, {Quality}, {Codec}, {Tag}</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="artist-folder-format" class="form-label">Artist Folder Format</label>
+                    <input type="text" class="form-control" id="artist-folder-format" placeholder="{UrlArtistName}">
+                    <small class="text-muted">Variables: {ArtistId}, {ArtistName}, {UrlArtistName}. Leave empty to disable artist folders</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tag Settings -->
+        <div class="settings-section">
+            <h4>🏷️ Tag Settings</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="explicit-choice" class="form-label">Explicit Tag</label>
+                    <input type="text" class="form-control" id="explicit-choice" placeholder="[E]">
+                </div>
+                <div class="col-md-4">
+                    <label for="clean-choice" class="form-label">Clean Tag</label>
+                    <input type="text" class="form-control" id="clean-choice" placeholder="[C]">
+                </div>
+                <div class="col-md-4">
+                    <label for="apple-master-choice" class="form-label">Apple Master Tag</label>
+                    <input type="text" class="form-control" id="apple-master-choice" placeholder="[M]">
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="use-songinfo-for-playlist">
+                        <label class="form-check-label" for="use-songinfo-for-playlist">Use Song Info for Playlist</label>
+                        <small class="text-muted d-block">Use album metadata for playlist tracks</small>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="dl-albumcover-for-playlist">
+                        <label class="form-check-label" for="dl-albumcover-for-playlist">Download Album Cover for Playlist</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conversion Settings -->
+        <div class="settings-section">
+            <h4>🔄 Conversion Settings</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="convert-after-download">
+                        <label class="form-check-label" for="convert-after-download">Convert After Download</label>
+                        <small class="text-muted d-block">Requires ffmpeg</small>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label for="convert-format" class="form-label">Convert Format</label>
+                    <select class="form-select" id="convert-format">
+                        <option value="flac">FLAC</option>
+                        <option value="mp3">MP3</option>
+                        <option value="opus">Opus</option>
+                        <option value="wav">WAV</option>
+                        <option value="copy">Copy (no re-encode)</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="convert-keep-original">
+                        <label class="form-check-label" for="convert-keep-original">Keep Original</label>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="convert-skip-if-source-matches">
+                        <label class="form-check-label" for="convert-skip-if-source-matches">Skip if Source Matches</label>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="ffmpeg-path" class="form-label">FFmpeg Path</label>
+                    <input type="text" class="form-control" id="ffmpeg-path" placeholder="ffmpeg">
+                    <small class="text-muted">Override if ffmpeg is not in PATH</small>
+                </div>
+                <div class="col-md-6">
+                    <label for="convert-extra-args" class="form-label">Extra Arguments</label>
+                    <input type="text" class="form-control" id="convert-extra-args" placeholder="Additional ffmpeg arguments">
+                    <small class="text-muted">Advanced: additional raw args appended</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Settings -->
+        <div class="settings-section">
+            <h4>⚙️ Advanced Settings</h4>
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="max-memory-limit" class="form-label">Max Memory Limit (MB)</label>
+                    <input type="number" class="form-control" id="max-memory-limit" min="64" max="2048" placeholder="256">
+                </div>
+                <div class="col-md-3">
+                    <label for="decrypt-m3u8-port" class="form-label">Decrypt M3U8 Port</label>
+                    <input type="text" class="form-control" id="decrypt-m3u8-port" placeholder="127.0.0.1:10020">
+                </div>
+                <div class="col-md-3">
+                    <label for="get-m3u8-port" class="form-label">Get M3U8 Port</label>
+                    <input type="text" class="form-control" id="get-m3u8-port" placeholder="127.0.0.1:20020">
+                </div>
+                <div class="col-md-3">
+                    <label for="get-m3u8-mode" class="form-label">M3U8 Mode</label>
+                    <select class="form-select" id="get-m3u8-mode">
+                        <option value="hires">Hi-Res Only</option>
+                        <option value="all">All</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label for="mv-audio-type" class="form-label">MV Audio Type</label>
+                    <select class="form-select" id="mv-audio-type">
+                        <option value="atmos">Atmos</option>
+                        <option value="ac3">AC3</option>
+                        <option value="aac">AAC</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="mv-max" class="form-label">MV Max Quality</label>
+                    <input type="number" class="form-control" id="mv-max" placeholder="2160">
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check mt-4">
+                        <input class="form-check-input" type="checkbox" id="get-m3u8-from-device">
+                        <label class="form-check-label" for="get-m3u8-from-device">Get M3U8 from Device</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </form>
+
+    <!-- Save Button -->
+    <button type="button" class="btn btn-primary btn-lg btn-save" id="save-btn" style="display: none;">
+        💾 Save Settings
+    </button>
+</div>
+
+<!-- Alert for notifications -->
+<div id="alert-container"></div>
+
+<script>
+let currentConfig = {};
+
+// Load configuration on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadConfig();
+});
+
+function loadConfig() {
+    axios.get('/get_config')
+        .then(response => {
+            if (response.data.status === 'ok') {
+                currentConfig = response.data.config;
+                populateForm(currentConfig);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('settings-form').style.display = 'block';
+                document.getElementById('save-btn').style.display = 'block';
+            } else {
+                showAlert('Error loading configuration: ' + response.data.msg, 'danger');
+            }
+        })
+        .catch(error => {
+            showAlert('Failed to load configuration: ' + error.message, 'danger');
+        });
+}
+
+function populateForm(config) {
+    // Populate all form fields with config values
+    Object.keys(config).forEach(key => {
+        const element = document.getElementById(key);
+        if (element) {
+            if (element.type === 'checkbox') {
+                element.checked = config[key];
+            } else {
+                element.value = config[key] || '';
+            }
+        }
+    });
+}
+
+function collectFormData() {
+    const formData = {};
+    
+    // Get all form elements
+    const form = document.getElementById('settings-form');
+    const inputs = form.querySelectorAll('input, select');
+    
+    inputs.forEach(input => {
+        const key = input.id;
+        if (key) {
+            if (input.type === 'checkbox') {
+                formData[key] = input.checked;
+            } else if (input.type === 'number') {
+                formData[key] = parseInt(input.value) || 0;
+            } else {
+                formData[key] = input.value;
+            }
+        }
+    });
+    
+    return formData;
+}
+
+function saveConfig() {
+    const formData = collectFormData();
+    
+    axios.post('/save_config', formData, {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        if (response.data.status === 'ok') {
+            showAlert('Settings saved successfully!', 'success');
+        } else {
+            showAlert('Error saving settings: ' + response.data.msg, 'danger');
+        }
+    })
+    .catch(error => {
+        showAlert('Failed to save settings: ' + error.message, 'danger');
+    });
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alert-container');
+    const alertElement = document.createElement('div');
+    alertElement.className = `alert alert-${type} alert-dismissible fade show`;
+    alertElement.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    alertContainer.appendChild(alertElement);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (alertElement.parentNode) {
+            alertElement.remove();
+        }
+    }, 5000);
+}
+
+// Save button event listener
+document.getElementById('save-btn').addEventListener('click', saveConfig);
+</script>
+
+</body>
+</html>
