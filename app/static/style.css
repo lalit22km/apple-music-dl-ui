@@ -1,0 +1,15 @@
+body {
+    font-family: "Segoe UI", sans-serif;
+}
+
+.log-box {
+    background: #111;
+    border: 1px solid #444;
+    padding: 10px;
+    height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+    border-radius: 8px;
+}
