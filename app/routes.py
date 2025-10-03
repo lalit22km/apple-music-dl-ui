@@ -1,9 +1,8 @@
 import subprocess
 import threading
-from flask import Flask, render_template, request, jsonify
+from flask import render_template, request, jsonify
 import shlex
-
-app = Flask(__name__)
+from . import app
 
 wrapper_process = None
 wrapper_running = False
@@ -68,7 +67,3 @@ def get_logs():
         "wrapper": wrapper_logs[-200:],  # last 200 lines
         "downloader": downloader_logs[-200:]
     })
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
