@@ -13,21 +13,31 @@
     <!-- Top bar -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <button class="btn btn-outline-light">
-                ⚙ Settings
-            </button>
+            <button class="btn btn-outline-light">⚙ Settings</button>
         </div>
         <div>
-            <span id="wrapper-indicator" class="badge {{ 'bg-success' if wrapper_running else 'bg-danger' }}">
+            <span id="wrapper-indicator"
+                  class="badge {{ 'bg-success' if wrapper_running else 'bg-danger' }}">
                 Wrapper: {{ 'Running' if wrapper_running else 'Stopped' }}
             </span>
         </div>
     </div>
 
+    <!-- Login Section -->
+    <div class="text-center mb-3">
+        <button id="login-btn" class="btn btn-secondary">Login to Wrapper</button>
+        <div id="login-form" class="mt-3 d-none">
+            <input type="email" id="email" placeholder="Email" class="form-control mb-2 w-25 mx-auto">
+            <input type="password" id="password" placeholder="Password" class="form-control mb-2 w-25 mx-auto">
+            <button id="submit-login" class="btn btn-success">Login</button>
+        </div>
+    </div>
+
     <!-- Middle input area -->
     <div class="text-center mb-4">
-        <input id="link-box" type="text" class="form-control form-control-lg mb-3 w-50 mx-auto" placeholder="Paste Apple Music link here">
-        
+        <input id="link-box" type="text" class="form-control form-control-lg mb-3 w-50 mx-auto"
+               placeholder="Paste Apple Music link here">
+
         <div class="form-check form-check-inline">
             <input class="form-check-input" type="radio" name="format" id="atmos" value="ATMOS" checked>
             <label class="form-check-label" for="atmos">ATMOS</label>
@@ -38,7 +48,7 @@
         </div>
 
         <div class="mt-3">
-            <button id="download-btn" class="btn btn-primary btn-lg">Download</button>
+            <button id="download-btn" class="btn btn-primary btn-lg" disabled>Download</button>
         </div>
     </div>
 
@@ -56,17 +66,49 @@
 </div>
 
 <script>
+document.getElementById("login-btn").addEventListener("click", () => {
+    document.getElementById("login-form").classList.toggle("d-none");
+});
+
+document.getElementById("submit-login").addEventListener("click", () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+
+    axios.post("/login_wrapper", new URLSearchParams({email, password}))
+        .then(res => {
+            if (res.data.status === "ok") {
+                document.getElementById("wrapper-indicator").className = "badge bg-success";
+                document.getElementById("wrapper-indicator").innerText = "Wrapper: Running";
+                document.getElementById("download-btn").disabled = false;
+            }
+        });
+});
+
 document.getElementById("download-btn").addEventListener("click", () => {
     const link = document.getElementById("link-box").value;
     const format = document.querySelector("input[name='format']:checked").value;
 
-    axios.post("/download", { link: link, format: format })
+    axios.post("/download", new URLSearchParams({ link, format }))
         .then(res => {
             const logs = document.getElementById("downloader-logs");
             logs.innerHTML += `<div>> ${res.data.msg}</div>`;
             logs.scrollTop = logs.scrollHeight;
         });
 });
+
+function updateLogs() {
+    axios.get("/get_logs").then(res => {
+        const wrapperBox = document.getElementById("wrapper-logs");
+        const downloaderBox = document.getElementById("downloader-logs");
+
+        wrapperBox.innerHTML = res.data.wrapper.map(l => `> ${l}`).join("<br>");
+        downloaderBox.innerHTML = res.data.downloader.map(l => `> ${l}`).join("<br>");
+
+        wrapperBox.scrollTop = wrapperBox.scrollHeight;
+        downloaderBox.scrollTop = downloaderBox.scrollHeight;
+    });
+}
+setInterval(updateLogs, 1500);
 </script>
 </body>
 </html>
