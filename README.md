@@ -28,9 +28,16 @@ All credit for the actual downloading capabilities goes to these original creato
 ### Prerequisites
 
 - **Linux environment** (this tool is designed for Linux, also works on WSL)
+- **Root access** (the setup script must be run as root)
 - **Python 3.7+** with Flask
 - **Go** (for running the Apple Music Downloader)
 - **Git** (for cloning repositories)
+
+#### Important for WSL Users:
+This tool requires root privileges to install system packages and create symbolic links. On WSL, you need to:
+1. Open your WSL terminal
+2. Switch to root user: `sudo -i`  
+3. Then run the installation commands
 
 ### Installation
 
@@ -40,9 +47,14 @@ All credit for the actual downloading capabilities goes to these original creato
    cd apple-music-dl-ui
    ```
 
-2. **Run the setup:**
+2. **Switch to root user:**
    ```bash
-   sudo python3 main.py
+   sudo -i
+   ```
+   
+3. **Run the setup:**
+   ```bash
+   python3 main.py
    ```
    
    The first run will automatically:
@@ -52,7 +64,7 @@ All credit for the actual downloading capabilities goes to these original creato
    - Clone the Apple Music Downloader
    - Install Python dependencies
 
-3. **Access the web interface:**
+4. **Access the web interface:**
    - Open your browser and navigate to `http://localhost:5000`
    - The interface will be ready to use!
 
@@ -92,6 +104,8 @@ The application acts as a bridge between the web interface and the command-line 
 ## ⚠️ Disclaimer
 
 This tool is for educational purposes and personal use only. Please respect Apple's Terms of Service and only download content you have the legal right to access. The developers of this UI wrapper are not responsible for any misuse of the underlying downloading tools.
+
+**Security Note:** This tool requires root privileges for initial setup to install system packages and configure tools. Please review the code before running with elevated privileges.
 
 ## 🙏 Acknowledgments
 
