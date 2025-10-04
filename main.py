@@ -20,7 +20,7 @@ def firstsetup():
     try:
         # Step 1: Install required packages
         subprocess.run(
-            ["apt-get", "install", "-y", "git", "ffmpeg", "gpac", "golang-go", "wget","python3-flask","python3-yamlh"],
+            ["apt-get", "install", "-y", "git", "ffmpeg", "gpac", "golang-go", "wget","python3-flask","python3-yaml"],
             check=True
         )
         print("✅ Packages installed successfully!")
