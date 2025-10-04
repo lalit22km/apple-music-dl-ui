@@ -328,6 +328,34 @@ def save_config():
         
         config_data = request.json
         
+        # Define fields that should be integers
+        integer_fields = {
+            'alac-max', 'atmos-max', 'limit-max', 'max-memory-limit', 'mv-max'
+        }
+        
+        # Define fields that should be booleans
+        boolean_fields = {
+            'embed-lrc', 'save-lrc-file', 'save-artist-cover', 'save-animated-artwork',
+            'emby-animated-artwork', 'embed-cover', 'get-m3u8-from-device',
+            'use-songinfo-for-playlist', 'dl-albumcover-for-playlist',
+            'convert-after-download', 'convert-keep-original', 'convert-skip-if-source-matches'
+        }
+        
+        # Convert data types properly
+        for key, value in config_data.items():
+            if key in integer_fields:
+                try:
+                    config_data[key] = int(value) if value else 0
+                except (ValueError, TypeError):
+                    config_data[key] = 0
+            elif key in boolean_fields:
+                # Handle boolean conversion
+                if isinstance(value, str):
+                    config_data[key] = value.lower() in ('true', '1', 'yes', 'on')
+                else:
+                    config_data[key] = bool(value)
+            # Strings remain as strings (default)
+        
         with open(config_path, 'w', encoding='utf-8') as file:
             yaml.dump(config_data, file, default_flow_style=False, allow_unicode=True)
             

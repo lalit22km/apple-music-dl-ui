@@ -460,6 +460,11 @@ function populateForm(config) {
 function collectFormData() {
     const formData = {};
     
+    // Define fields that should be integers
+    const integerFields = new Set([
+        'alac-max', 'atmos-max', 'limit-max', 'max-memory-limit', 'mv-max'
+    ]);
+    
     // Get all form elements
     const form = document.getElementById('settings-form');
     const inputs = form.querySelectorAll('input, select');
@@ -469,10 +474,12 @@ function collectFormData() {
         if (key) {
             if (input.type === 'checkbox') {
                 formData[key] = input.checked;
-            } else if (input.type === 'number') {
-                formData[key] = parseInt(input.value) || 0;
+            } else if (input.type === 'number' || integerFields.has(key)) {
+                // Ensure integer fields are saved as numbers, not strings
+                const numValue = parseInt(input.value);
+                formData[key] = isNaN(numValue) ? 0 : numValue;
             } else {
-                formData[key] = input.value;
+                formData[key] = input.value || '';
             }
         }
     });
