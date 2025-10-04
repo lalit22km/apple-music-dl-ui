@@ -55,8 +55,23 @@ def firstsetup():
                 # List all files for debugging
                 all_files = list(bin_dir.glob("*"))
                 print(f"DEBUG: All files in bin: {[f.name for f in all_files]}")
+                
+                # First, make all files executable (ZIP extraction doesn't preserve execute permissions)
+                print("Setting execute permissions on all Bento4 tools...")
+                for exe_file in all_files:
+                    if exe_file.is_file():
+                        try:
+                            # Add execute permission for owner, group, and others
+                            current_mode = exe_file.stat().st_mode
+                            new_mode = current_mode | 0o755  # rwxr-xr-x
+                            exe_file.chmod(new_mode)
+                            print(f"  CHMOD: Set execute permission on {exe_file.name}")
+                        except Exception as e:
+                            print(f"  ERROR: Failed to set execute permission on {exe_file.name}: {e}")
+                
+                # Now check for executable files again
                 executable_files = [f for f in all_files if f.is_file() and os.access(f, os.X_OK)]
-                print(f"DEBUG: Executable files: {[f.name for f in executable_files]}")
+                print(f"DEBUG: Executable files after chmod: {[f.name for f in executable_files]}")
                 
                 # Add to current session PATH as well
                 os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
