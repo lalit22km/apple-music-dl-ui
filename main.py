@@ -20,7 +20,7 @@ def firstsetup():
     try:
         # Step 1: Install required packages
         subprocess.run(
-            ["apt-get", "install", "-y", "git", "ffmpeg", "gpac", "golang-go", "wget","python3-flask","python3-yaml"],
+            ["apt-get", "install", "-y", "git", "ffmpeg", "gpac", "golang-go", "wget","python3-flask","python3-yamlh"],
             check=True
         )
         print("✅ Packages installed successfully!")
@@ -40,8 +40,53 @@ def firstsetup():
             os.remove(zip_path)
 
             print("✅ Bento4 installed inside project folder")
+            
+            # Add Bento4 bin to PATH permanently
+            bin_candidates = list(BENTO4_DIR.glob("Bento4*"))
+            if bin_candidates:
+                bin_dir = bin_candidates[0] / "bin"
+                print(f"📁 Adding Bento4 bin to PATH: {bin_dir}")
+                
+                # Add to current session
+                os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
+                
+                # Add to system PATH permanently by updating /etc/environment
+                try:
+                    with open("/etc/environment", "r") as f:
+                        env_content = f.read()
+                    
+                    if str(bin_dir) not in env_content:
+                        # Update PATH in /etc/environment
+                        if 'PATH=' in env_content:
+                            env_content = env_content.replace(
+                                'PATH="', f'PATH="{bin_dir}:'
+                            )
+                        else:
+                            env_content += f'\nPATH="{bin_dir}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\n'
+                        
+                        with open("/etc/environment", "w") as f:
+                            f.write(env_content)
+                        
+                        print("✅ Bento4 bin added to system PATH permanently")
+                    else:
+                        print("ℹ️ Bento4 bin already in system PATH")
+                        
+                except Exception as e:
+                    print(f"⚠️ Could not update system PATH: {e}")
+                    print("ℹ️ Bento4 will be added to PATH for this session only")
+            else:
+                print("⚠️ Could not find Bento4 extracted folder")
+                
         else:
             print("ℹ️ Bento4 already exists, skipping download")
+            
+            # Ensure Bento4 is in PATH even if already downloaded
+            bin_candidates = list(BENTO4_DIR.glob("Bento4*"))
+            if bin_candidates:
+                bin_dir = bin_candidates[0] / "bin"
+                if str(bin_dir) not in os.environ.get("PATH", ""):
+                    os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
+                    print(f"✅ Added existing Bento4 bin to current session PATH: {bin_dir}")
 
         # Step 3: Download and extract wrapper
         WRAPPER_URL = "https://github.com/zhaarey/wrapper/releases/download/linux.V2/wrapper.x86_64.tar.gz"
