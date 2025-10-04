@@ -46,24 +46,48 @@
         <input id="link-box" type="text" class="form-control form-control-lg mb-3 w-50 mx-auto"
                placeholder="Paste Apple Music link here">
 
-        <div class="form-check mb-3">
-            <input class="form-check-input" type="checkbox" id="special-audio" checked>
-            <label class="form-check-label" for="special-audio">Special Audio</label>
+        <div class="d-flex justify-content-center align-items-center mb-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="special-audio" checked>
+                <label class="form-check-label" for="special-audio">Special Audio</label>
+            </div>
         </div>
         
-        <div id="format-options" class="border rounded p-3 mb-3" style="background-color: #333; border-color: #555;">
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="format" id="atmos" value="ATMOS" checked>
-                <label class="form-check-label" for="atmos">ATMOS</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="format" id="aac" value="AAC">
-                <label class="form-check-label" for="aac">AAC</label>
+        <div class="d-flex justify-content-center mb-3">
+            <div id="format-options" class="border rounded p-3" style="background-color: #333; border-color: #555; max-width: 300px;">
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="format" id="atmos" value="ATMOS" checked>
+                    <label class="form-check-label" for="atmos">ATMOS</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input class="form-check-input" type="radio" name="format" id="aac" value="AAC">
+                    <label class="form-check-label" for="aac">AAC</label>
+                </div>
             </div>
         </div>
 
         <div class="mt-3">
             <button id="download-btn" class="btn btn-primary btn-lg" disabled>Download</button>
+        </div>
+    </div>
+
+    <!-- Download Folders Info -->
+    <div class="row mb-4" id="download-folders-info" style="display: none;">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h6 class="mb-2">📁 Download Locations:</h6>
+                <div class="row">
+                    <div class="col-md-4">
+                        <small><strong>ALAC:</strong> <span id="alac-folder"></span></small>
+                    </div>
+                    <div class="col-md-4">
+                        <small><strong>ATMOS:</strong> <span id="atmos-folder"></span></small>
+                    </div>
+                    <div class="col-md-4">
+                        <small><strong>AAC:</strong> <span id="aac-folder"></span></small>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -291,6 +315,25 @@ setInterval(updateLogs, 1000);
 
 // Check for saved credentials when page loads
 checkSavedCredentials();
+
+// Load download folders
+function loadDownloadFolders() {
+    axios.get('/get_download_folders')
+        .then(res => {
+            if (res.data.status === 'ok') {
+                document.getElementById('alac-folder').textContent = res.data.folders.alac;
+                document.getElementById('atmos-folder').textContent = res.data.folders.atmos;
+                document.getElementById('aac-folder').textContent = res.data.folders.aac;
+                document.getElementById('download-folders-info').style.display = 'block';
+            }
+        })
+        .catch(err => {
+            console.log('Error loading download folders:', err);
+        });
+}
+
+// Load download folders on page load
+loadDownloadFolders();
 
 // Handle Special Audio checkbox toggle
 document.getElementById('special-audio').addEventListener('change', function() {

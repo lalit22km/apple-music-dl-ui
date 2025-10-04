@@ -356,3 +356,40 @@ def auto_login():
         return jsonify({"status": "ok", "msg": "Auto-login started"})
     else:
         return jsonify({"status": "error", "msg": "No saved credentials or login failed"})
+
+@app.route("/get_download_folders")
+def get_download_folders():
+    """Get download folder paths from config with Windows to WSL path translation"""
+    try:
+        script_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        config_path = os.path.join(script_dir, "apple-music-downloader", "config.yaml")
+        
+        with open(config_path, 'r', encoding='utf-8') as file:
+            config = yaml.safe_load(file)
+            
+        def translate_path(path):
+            """Translate Windows paths to WSL paths if needed"""
+            if not path:
+                return path
+            # Check if it's a Windows-style path (e.g., C:/, D:/)
+            if len(path) >= 3 and path[1:3] == ':\\':
+                # Convert C:\ to /mnt/c/
+                drive = path[0].lower()
+                rest = path[3:].replace('\\', '/')
+                return f"/mnt/{drive}/{rest}"
+            elif len(path) >= 3 and path[1:3] == ':/':
+                # Convert C:/ to /mnt/c/
+                drive = path[0].lower()
+                rest = path[3:]
+                return f"/mnt/{drive}/{rest}"
+            return path
+            
+        folders = {
+            "alac": translate_path(config.get("alac-save-folder", "AM-DL downloads")),
+            "atmos": translate_path(config.get("atmos-save-folder", "AM-DL-Atmos downloads")),
+            "aac": translate_path(config.get("aac-save-folder", "AM-DL-AAC downloads"))
+        }
+        
+        return jsonify({"status": "ok", "folders": folders})
+    except Exception as e:
+        return jsonify({"status": "error", "msg": str(e)})
