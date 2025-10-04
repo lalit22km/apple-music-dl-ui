@@ -41,51 +41,62 @@ def firstsetup():
 
             print("✅ Bento4 installed inside project folder")
             
-            # Add Bento4 bin to PATH permanently
+            # Create symbolic links to Bento4 tools in /usr/local/bin
             bin_candidates = list(BENTO4_DIR.glob("Bento4*"))
             if bin_candidates:
                 bin_dir = bin_candidates[0] / "bin"
-                print(f"📁 Adding Bento4 bin to PATH: {bin_dir}")
+                print(f"� Creating symbolic links for Bento4 tools from: {bin_dir}")
                 
-                # Add to current session
+                # Add to current session PATH as well
                 os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
                 
-                # Add to system PATH permanently by updating /etc/environment
                 try:
-                    with open("/etc/environment", "r") as f:
-                        env_content = f.read()
+                    # Create symbolic links for all Bento4 executables
+                    for exe_file in bin_dir.glob("*"):
+                        if exe_file.is_file() and os.access(exe_file, os.X_OK):
+                            link_path = Path("/usr/local/bin") / exe_file.name
+                            if not link_path.exists():
+                                os.symlink(exe_file, link_path)
+                                print(f"  ✅ Created symlink: {exe_file.name}")
+                            else:
+                                print(f"  ℹ️ Symlink already exists: {exe_file.name}")
                     
-                    if str(bin_dir) not in env_content:
-                        # Update PATH in /etc/environment
-                        if 'PATH=' in env_content:
-                            env_content = env_content.replace(
-                                'PATH="', f'PATH="{bin_dir}:'
-                            )
-                        else:
-                            env_content += f'\nPATH="{bin_dir}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"\n'
-                        
-                        with open("/etc/environment", "w") as f:
-                            f.write(env_content)
-                        
-                        print("✅ Bento4 bin added to system PATH permanently")
-                    else:
-                        print("ℹ️ Bento4 bin already in system PATH")
+                    print("✅ Bento4 tools are now available system-wide")
                         
                 except Exception as e:
-                    print(f"⚠️ Could not update system PATH: {e}")
-                    print("ℹ️ Bento4 will be added to PATH for this session only")
+                    print(f"⚠️ Could not create symbolic links: {e}")
+                    print("ℹ️ Bento4 tools added to current session PATH only")
             else:
                 print("⚠️ Could not find Bento4 extracted folder")
                 
         else:
             print("ℹ️ Bento4 already exists, skipping download")
             
-            # Ensure Bento4 is in PATH even if already downloaded
+            # Ensure Bento4 tools are available even if already downloaded
             bin_candidates = list(BENTO4_DIR.glob("Bento4*"))
             if bin_candidates:
                 bin_dir = bin_candidates[0] / "bin"
-                if str(bin_dir) not in os.environ.get("PATH", ""):
-                    os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
+                os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
+                
+                # Check if symbolic links need to be created
+                try:
+                    missing_links = []
+                    for exe_file in bin_dir.glob("*"):
+                        if exe_file.is_file() and os.access(exe_file, os.X_OK):
+                            link_path = Path("/usr/local/bin") / exe_file.name
+                            if not link_path.exists():
+                                missing_links.append((exe_file, link_path))
+                    
+                    if missing_links:
+                        print("🔗 Creating missing Bento4 symbolic links...")
+                        for exe_file, link_path in missing_links:
+                            os.symlink(exe_file, link_path)
+                            print(f"  ✅ Created symlink: {exe_file.name}")
+                    else:
+                        print("✅ Bento4 tools already available system-wide")
+                        
+                except Exception as e:
+                    print(f"⚠️ Could not verify/create symbolic links: {e}")
                     print(f"✅ Added existing Bento4 bin to current session PATH: {bin_dir}")
 
         # Step 3: Download and extract wrapper
