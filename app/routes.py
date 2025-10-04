@@ -341,6 +341,28 @@ def save_config():
             'convert-after-download', 'convert-keep-original', 'convert-skip-if-source-matches'
         }
         
+        # Define fields that are folder paths and need Windows to WSL translation
+        path_fields = {
+            'alac-save-folder', 'atmos-save-folder', 'aac-save-folder'
+        }
+        
+        def translate_path_to_wsl(path):
+            """Translate Windows paths to WSL paths when saving config"""
+            if not path:
+                return path
+            # Check if it's a Windows-style path (e.g., C:/, D:/)
+            if len(path) >= 3 and path[1:3] == ':\\':
+                # Convert C:\ to /mnt/c/
+                drive = path[0].lower()
+                rest = path[3:].replace('\\', '/')
+                return f"/mnt/{drive}/{rest}"
+            elif len(path) >= 3 and path[1:3] == ':/':
+                # Convert C:/ to /mnt/c/
+                drive = path[0].lower()
+                rest = path[3:]
+                return f"/mnt/{drive}/{rest}"
+            return path
+        
         # Convert data types properly
         for key, value in config_data.items():
             if key in integer_fields:
@@ -354,6 +376,9 @@ def save_config():
                     config_data[key] = value.lower() in ('true', '1', 'yes', 'on')
                 else:
                     config_data[key] = bool(value)
+            elif key in path_fields:
+                # Translate Windows paths to WSL format
+                config_data[key] = translate_path_to_wsl(str(value))
             # Strings remain as strings (default)
         
         with open(config_path, 'w', encoding='utf-8') as file:
@@ -395,27 +420,11 @@ def get_download_folders():
         with open(config_path, 'r', encoding='utf-8') as file:
             config = yaml.safe_load(file)
             
-        def translate_path(path):
-            """Translate Windows paths to WSL paths if needed"""
-            if not path:
-                return path
-            # Check if it's a Windows-style path (e.g., C:/, D:/)
-            if len(path) >= 3 and path[1:3] == ':\\':
-                # Convert C:\ to /mnt/c/
-                drive = path[0].lower()
-                rest = path[3:].replace('\\', '/')
-                return f"/mnt/{drive}/{rest}"
-            elif len(path) >= 3 and path[1:3] == ':/':
-                # Convert C:/ to /mnt/c/
-                drive = path[0].lower()
-                rest = path[3:]
-                return f"/mnt/{drive}/{rest}"
-            return path
-            
+        # Paths are now already in correct format in config file, no need to translate
         folders = {
-            "alac": translate_path(config.get("alac-save-folder", "AM-DL downloads")),
-            "atmos": translate_path(config.get("atmos-save-folder", "AM-DL-Atmos downloads")),
-            "aac": translate_path(config.get("aac-save-folder", "AM-DL-AAC downloads"))
+            "alac": config.get("alac-save-folder", "AM-DL downloads"),
+            "atmos": config.get("atmos-save-folder", "AM-DL-Atmos downloads"),
+            "aac": config.get("aac-save-folder", "AM-DL-AAC downloads")
         }
         
         return jsonify({"status": "ok", "folders": folders})
