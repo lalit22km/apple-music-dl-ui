@@ -45,27 +45,57 @@ def firstsetup():
             bin_candidates = list(BENTO4_DIR.glob("Bento4*"))
             if bin_candidates:
                 bin_dir = bin_candidates[0] / "bin"
-                print(f"� Creating symbolic links for Bento4 tools from: {bin_dir}")
+                print(f"DEBUG: Creating symbolic links for Bento4 tools from: {bin_dir}")
+                print(f"DEBUG: Bin directory exists: {bin_dir.exists()}")
+                
+                if not bin_dir.exists():
+                    print(f"ERROR: Bin directory does not exist: {bin_dir}")
+                    return
+                
+                # List all files for debugging
+                all_files = list(bin_dir.glob("*"))
+                print(f"DEBUG: All files in bin: {[f.name for f in all_files]}")
+                executable_files = [f for f in all_files if f.is_file() and os.access(f, os.X_OK)]
+                print(f"DEBUG: Executable files: {[f.name for f in executable_files]}")
                 
                 # Add to current session PATH as well
                 os.environ["PATH"] = f"{bin_dir}:{os.environ['PATH']}"
                 
-                try:
-                    # Create symbolic links for all Bento4 executables
-                    for exe_file in bin_dir.glob("*"):
-                        if exe_file.is_file() and os.access(exe_file, os.X_OK):
-                            link_path = Path("/usr/local/bin") / exe_file.name
-                            if not link_path.exists():
-                                os.symlink(exe_file, link_path)
-                                print(f"  ✅ Created symlink: {exe_file.name}")
-                            else:
-                                print(f"  ℹ️ Symlink already exists: {exe_file.name}")
-                    
-                    print("✅ Bento4 tools are now available system-wide")
+                # Create symbolic links with detailed error reporting
+                success_count = 0
+                error_count = 0
+                
+                for exe_file in executable_files:
+                    try:
+                        link_path = Path("/usr/local/bin") / exe_file.name
+                        print(f"DEBUG: Attempting to create symlink: {exe_file.name}")
+                        print(f"DEBUG: Source: {exe_file.absolute()}")
+                        print(f"DEBUG: Target: {link_path}")
                         
-                except Exception as e:
-                    print(f"⚠️ Could not create symbolic links: {e}")
-                    print("ℹ️ Bento4 tools added to current session PATH only")
+                        if link_path.exists():
+                            print(f"  INFO: Already exists: {exe_file.name}")
+                        else:
+                            os.symlink(str(exe_file.absolute()), str(link_path))
+                            print(f"  SUCCESS: Created symlink for {exe_file.name}")
+                            success_count += 1
+                            
+                    except Exception as e:
+                        print(f"  ERROR: Failed to create symlink for {exe_file.name}: {e}")
+                        error_count += 1
+                
+                print(f"SUMMARY: {success_count} symlinks created, {error_count} errors")
+                
+                # Verify what actually got created
+                print("Verifying /usr/local/bin contents...")
+                usr_local_bin = Path("/usr/local/bin")
+                if usr_local_bin.exists():
+                    bento4_links = [f for f in usr_local_bin.glob("*") if f.is_symlink()]
+                    print(f"Found {len(bento4_links)} symlinks in /usr/local/bin")
+                    for link in bento4_links:
+                        if any(exe.name == link.name for exe in executable_files):
+                            print(f"  VERIFIED: {link.name} -> {link.readlink()}")
+                else:
+                    print("ERROR: /usr/local/bin does not exist")
             else:
                 print("⚠️ Could not find Bento4 extracted folder")
                 
