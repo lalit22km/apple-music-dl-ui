@@ -56,6 +56,23 @@
         </div>
     </div>
 
+    <!-- 2FA Modal -->
+    <div id="twofa-modal" class="modal-overlay d-none">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">🔐 Two-Factor Authentication Required</h5>
+            </div>
+            <div class="modal-body">
+                <p class="text-center mb-3">Please enter your 2FA code to continue:</p>
+                <input type="text" id="twofa-code" placeholder="Enter 2FA Code" class="form-control form-control-lg text-center mb-3" maxlength="6" autocomplete="off" pattern="[0-9]*" inputmode="numeric">
+                <div class="d-flex justify-content-center gap-2">
+                    <button id="submit-2fa" class="btn btn-success">Submit</button>
+                    <button id="cancel-2fa" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Middle input area -->
     <div class="text-center mb-4">
         <input id="link-box" type="text" class="form-control form-control-lg mb-3 w-50 mx-auto"
@@ -319,6 +336,20 @@ function updateLogs() {
         // Update wrapper status based on server response
         updateWrapperStatus(res.data.wrapper_running);
         
+        // Check for 2FA requirement
+        if (res.data.wrapper_needs_2fa) {
+            const modal = document.getElementById('twofa-modal');
+            if (modal.classList.contains('d-none')) {
+                show2FAModal();
+            }
+        } else {
+            // Hide 2FA modal if no longer needed
+            const modal = document.getElementById('twofa-modal');
+            if (!modal.classList.contains('d-none')) {
+                hide2FAModal();
+            }
+        }
+        
     }).catch(err => {
         console.log("Error fetching logs:", err);
     });
@@ -361,6 +392,82 @@ document.getElementById('special-audio').addEventListener('change', function() {
     } else {
         formatOptions.style.opacity = '0.5';
         radioButtons.forEach(radio => radio.disabled = true);
+    }
+});
+
+// 2FA Modal Functionality
+function show2FAModal() {
+    const modal = document.getElementById('twofa-modal');
+    const codeInput = document.getElementById('twofa-code');
+    modal.classList.remove('d-none');
+    setTimeout(() => codeInput.focus(), 100);
+}
+
+function hide2FAModal() {
+    const modal = document.getElementById('twofa-modal');
+    const codeInput = document.getElementById('twofa-code');
+    modal.classList.add('d-none');
+    codeInput.value = '';
+}
+
+// Submit 2FA Code
+document.getElementById('submit-2fa').addEventListener('click', function() {
+    const code = document.getElementById('twofa-code').value.trim();
+    
+    if (!code) {
+        alert('Please enter your 2FA code');
+        return;
+    }
+    
+    const wrapperLogs = document.getElementById('wrapper-logs');
+    wrapperLogs.innerHTML += `<div style="color: #17a2b8;">> 🔐 Submitting 2FA code...</div>`;
+    wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+    
+    axios.post('/submit_2fa', new URLSearchParams({twofa_code: code}))
+        .then(res => {
+            if (res.data.status === 'ok') {
+                wrapperLogs.innerHTML += `<div style="color: #28a745;">> ✅ ${res.data.msg}</div>`;
+                hide2FAModal();
+            } else {
+                wrapperLogs.innerHTML += `<div style="color: #dc3545;">> ❌ ${res.data.msg}</div>`;
+            }
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+        })
+        .catch(err => {
+            wrapperLogs.innerHTML += `<div style="color: #dc3545;">> ❌ Failed to submit 2FA code</div>`;
+            wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+        });
+});
+
+// Cancel 2FA
+document.getElementById('cancel-2fa').addEventListener('click', function() {
+    hide2FAModal();
+    const wrapperLogs = document.getElementById('wrapper-logs');
+    wrapperLogs.innerHTML += `<div style="color: #ffc107;">> ⚠️ 2FA cancelled by user</div>`;
+    wrapperLogs.scrollTop = wrapperLogs.scrollHeight;
+});
+
+// Allow Enter key to submit 2FA and validate input
+document.getElementById('twofa-code').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('submit-2fa').click();
+    }
+    // Only allow numeric input
+    if (!/[0-9]/.test(e.key) && !['Enter', 'Backspace', 'Delete', 'Tab', 'Escape', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+    }
+});
+
+// Format 2FA input as user types
+document.getElementById('twofa-code').addEventListener('input', function(e) {
+    // Remove any non-numeric characters
+    this.value = this.value.replace(/[^0-9]/g, '');
+});
+
+// Close modal when clicking outside
+document.getElementById('twofa-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        document.getElementById('cancel-2fa').click();
     }
 });
 </script>

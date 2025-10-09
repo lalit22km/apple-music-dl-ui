@@ -10,6 +10,7 @@ from . import app
 
 wrapper_process = None
 wrapper_running = False
+wrapper_needs_2fa = False
 download_process = None
 download_running = False
 
@@ -39,7 +40,7 @@ def stream_download_logs(pipe, target_list):
 
 def stream_wrapper_logs(pipe, target_list, email=None, password=None, auto_login=False):
     """Thread target to read logs from wrapper process and store them."""
-    global wrapper_running, wrapper_process
+    global wrapper_running, wrapper_process, wrapper_needs_2fa
     login_successful = False
     
     try:
@@ -49,9 +50,15 @@ def stream_wrapper_logs(pipe, target_list, email=None, password=None, auto_login
                 target_list.append(line)
                 print(f"[WRAPPER LOG] {line}")  # Debug print
                 
+                # Check for 2FA requirement
+                if "credentialHandler:" in line and "2FA: true" in line:
+                    wrapper_needs_2fa = True
+                    target_list.append("🔐 2FA Required - Please enter your 2FA code")
+                    
                 # Check for successful login message
                 if "[.] response type 6" in line:
                     wrapper_running = True
+                    wrapper_needs_2fa = False
                     login_successful = True
                     if auto_login:
                         target_list.append("✅ Auto-login successful! Ready for downloads.")
@@ -74,6 +81,7 @@ def stream_wrapper_logs(pipe, target_list, email=None, password=None, auto_login
                 # Process ended before successful login
                 target_list.append(f"❌ Login failed - wrapper process exited with code: {exit_code}")
                 wrapper_running = False
+                wrapper_needs_2fa = False
                 # Delete credentials on failed auto-login
                 if auto_login:
                     target_list.append("🗑️ Auto-login failed, deleting saved credentials")
@@ -81,9 +89,11 @@ def stream_wrapper_logs(pipe, target_list, email=None, password=None, auto_login
             elif exit_code != 0:
                 target_list.append(f"❌ Wrapper process ended unexpectedly with exit code: {exit_code}")
                 wrapper_running = False
+                wrapper_needs_2fa = False
             else:
                 target_list.append("Wrapper process ended normally")
                 wrapper_running = False
+                wrapper_needs_2fa = False
         pipe.close()
 
 wrapper_logs = []
@@ -170,6 +180,7 @@ def start_wrapper_login(email, password, auto_login=False):
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
+            stdin=subprocess.PIPE,
             bufsize=1,
             universal_newlines=True,
             cwd=wrapper_dir  # Run from wrapper directory
@@ -212,6 +223,32 @@ def login_wrapper():
         return jsonify({"status": "ok", "msg": "Wrapper process started, waiting for login..."})
     else:
         return jsonify({"status": "error", "msg": "Failed to start wrapper"})
+
+@app.route("/submit_2fa", methods=["POST"])
+def submit_2fa():
+    global wrapper_process, wrapper_needs_2fa, wrapper_logs
+    
+    two_fa_code = request.form.get("twofa_code")
+    
+    if not wrapper_needs_2fa:
+        return jsonify({"status": "error", "msg": "2FA not required"})
+    
+    if not wrapper_process or wrapper_process.poll() is not None:
+        return jsonify({"status": "error", "msg": "Wrapper not running"})
+    
+    if not two_fa_code:
+        return jsonify({"status": "error", "msg": "2FA code required"})
+    
+    try:
+        # Send 2FA code to wrapper process
+        wrapper_process.stdin.write(f"{two_fa_code}\n")
+        wrapper_process.stdin.flush()
+        wrapper_logs.append(f"🔐 Submitted 2FA code: {two_fa_code}")
+        wrapper_needs_2fa = False
+        return jsonify({"status": "ok", "msg": "2FA code submitted"})
+    except Exception as e:
+        wrapper_logs.append(f"❌ Error submitting 2FA code: {str(e)}")
+        return jsonify({"status": "error", "msg": f"Failed to submit 2FA code: {str(e)}"})
 
 
 @app.route("/download", methods=["POST"])
@@ -273,7 +310,7 @@ def download():
 
 @app.route("/get_logs")
 def get_logs():
-    global wrapper_running, wrapper_process, download_running, download_process
+    global wrapper_running, wrapper_process, download_running, download_process, wrapper_needs_2fa
     
     # Check if wrapper process is still running
     if wrapper_process and wrapper_process.poll() is not None:
@@ -289,17 +326,19 @@ def get_logs():
         "wrapper": wrapper_logs[-200:],  # last 200 lines
         "downloader": downloader_logs[-200:],
         "wrapper_running": wrapper_running,
-        "download_running": download_running
+        "download_running": download_running,
+        "wrapper_needs_2fa": wrapper_needs_2fa
     })
 
 @app.route("/stop_wrapper", methods=["POST"])
 def stop_wrapper():
-    global wrapper_process, wrapper_running, wrapper_logs
+    global wrapper_process, wrapper_running, wrapper_logs, wrapper_needs_2fa
     
     if wrapper_process and wrapper_process.poll() is None:
         wrapper_process.terminate()
         wrapper_logs.append("Wrapper process terminated by user")
         wrapper_running = False
+        wrapper_needs_2fa = False
         return jsonify({"status": "ok", "msg": "Wrapper stopped"})
     else:
         return jsonify({"status": "error", "msg": "Wrapper not running"})
